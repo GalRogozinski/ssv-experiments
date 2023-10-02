@@ -6,8 +6,9 @@ import (
 	"ssv-experiments/new_arch_2/spec/asgard/types"
 )
 
+// UponPrepare process a pre-validated prepare message
 func UponPrepare(state *types.QBFT, share *types.Share, signedMessage *types.QBFTSignedMessage) error {
-	if !uniqueSingerForRound(state, signedMessage) {
+	if !uniqueSignerForRound(state, signedMessage) {
 		return errors.New("duplicate message")
 	}
 	AddMessage(state, signedMessage)

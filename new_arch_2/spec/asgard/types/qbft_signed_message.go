@@ -16,9 +16,10 @@ const (
 )
 
 type QBFTMessage struct {
-	MsgType uint64
-	Round   uint64 // QBFT round for which the msg is for
-	Height  uint64 // QBFT height for which the msg is for
+	MsgType    uint64
+	Round      uint64 // QBFT round for which the msg is for
+	Height     uint64 // QBFT height for which the msg is for
+	Identifier []byte `ssz-max:"56"` // instance Identifier this msg belongs to
 
 	Root                     [32]byte `ssz-size:"32"`
 	DataRound                uint64
