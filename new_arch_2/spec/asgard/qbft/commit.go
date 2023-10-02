@@ -6,10 +6,10 @@ import (
 	"ssv-experiments/new_arch_2/spec/asgard/types"
 )
 
-// UponCommit returns true if a quorum of commit messages was received.
+// UponCommit checks if message is unique and transitions the state accordingly.
 // Assumes commit message is valid!
 func UponCommit(state *types.QBFT, share *types.Share, signedMessage *types.QBFTSignedMessage) error {
-	if !uniqueSingerForRound(state, signedMessage) {
+	if !uniqueSignerForRound(state, signedMessage) {
 		return errors.New("duplicate message")
 	}
 	AddMessage(state, signedMessage)
@@ -20,11 +20,17 @@ func UponCommit(state *types.QBFT, share *types.Share, signedMessage *types.QBFT
 	return nil
 }
 
+// CreateCommitMessage returns commit message
+// This function is called each time state.PreparedRound == state.Round becomes true
 func CreateCommitMessage(state *types.QBFT) (*types.QBFTMessage, error) {
 	// TODO implement
 	return &types.QBFTMessage{
-		Round:   state.Round,
-		MsgType: types.CommitMessageType,
+		MsgType:    types.CommitMessageType,
+		Round:      state.Round,
+		Height:     state.Height,
+		Identifier: state.Identifier, // TODO
+		Root:       state.ProposalAcceptedForCurrentRound.Message.Root,
+		DataRound:  state.Round, // TODO for future version omit this and keep only round?
 	}, nil
 }
 
