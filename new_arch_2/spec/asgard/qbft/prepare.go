@@ -29,7 +29,7 @@ func CreatePrepareMessage(state *types.QBFT) (*types.QBFTMessage, error) {
 }
 
 func PrepareQuorum(state *types.QBFT, share *types.Share) bool {
-	all := RoundAndType(state, state.Round, types.PrepareMessageType)
+	all := MessagesByRoundAndType(state, state.Round, types.PrepareMessageType)
 	return UniqueSignerQuorum(share.Quorum, all)
 }
 

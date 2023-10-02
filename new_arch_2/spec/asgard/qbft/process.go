@@ -49,7 +49,7 @@ func DecidedRoot(state *types.QBFT, share *types.Share) (bool, []*types.QBFTSign
 	byRoot := make(map[[32]byte][]*types.QBFTSignedMessage)
 
 	// batch messages by root. If exists a decided message return immediately
-	for _, m := range RoundAndType(state, state.Round, types.CommitMessageType) {
+	for _, m := range MessagesByRoundAndType(state, state.Round, types.CommitMessageType) {
 		// decided message return true
 		if len(m.Signers) >= int(share.Quorum) {
 			return true, []*types.QBFTSignedMessage{m}, m.Message.Root
@@ -83,7 +83,7 @@ func DecidedValue(state *types.QBFT, share *types.Share) ([]byte, error) {
 	}
 
 	// regular commit quorum
-	proposalMsgs := RoundAndType(state, state.Round, types.ProposalMessageType)
+	proposalMsgs := MessagesByRoundAndType(state, state.Round, types.ProposalMessageType)
 	if len(proposalMsgs) != 1 {
 		return nil, errors.New("no valid proposal for round")
 	}

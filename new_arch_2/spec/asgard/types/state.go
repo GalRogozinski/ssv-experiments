@@ -14,6 +14,9 @@ type QBFT struct {
 
 	// Stopped when true, can't process any messages
 	Stopped bool
+
+	// Decided when true, the QBFT instance finished and may stop processing messages
+	Decided bool
 }
 
 func (qbft *QBFT) DecidedValue() *ConsensusData {

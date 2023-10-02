@@ -13,6 +13,9 @@ func UponCommit(state *types.QBFT, share *types.Share, signedMessage *types.QBFT
 		return errors.New("duplicate message")
 	}
 	AddMessage(state, signedMessage)
+	if IsCommitQuorum(state, share) {
+		state.Decided = true
+	}
 
 	return nil
 }
@@ -25,9 +28,9 @@ func CreateCommitMessage(state *types.QBFT) (*types.QBFTMessage, error) {
 	}, nil
 }
 
-func CommitQuorum(state *types.QBFT, share *types.Share) bool {
-	all := RoundAndType(state, state.Round, types.CommitMessageType)
-	return UniqueSignerQuorum(share.Quorum, all)
+func IsCommitQuorum(state *types.QBFT, share *types.Share) bool {
+	commits := MessagesByRoundAndType(state, state.Round, types.CommitMessageType)
+	return UniqueSignerQuorum(share.Quorum, commits)
 }
 
 // isValidCommit returns nil if commit message (not a decided message) is valid for state

@@ -15,12 +15,12 @@ func CreateRoundChangeMessage(state *types.QBFT) (*types.QBFTMessage, error) {
 }
 
 func RoundChangeQuorum(state *types.QBFT, share *types.Share) bool {
-	all := RoundAndType(state, state.Round, types.RoundChangeMessageType)
+	all := MessagesByRoundAndType(state, state.Round, types.RoundChangeMessageType)
 	return UniqueSignerQuorum(share.Quorum, all)
 }
 
 func RoundChangePartialQuorum(state *types.QBFT, share *types.Share) bool {
-	all := RoundAndType(state, state.Round, types.RoundChangeMessageType)
+	all := MessagesByRoundAndType(state, state.Round, types.RoundChangeMessageType)
 	return UniqueSignerQuorum(share.PartialQuorum, all)
 }
 
