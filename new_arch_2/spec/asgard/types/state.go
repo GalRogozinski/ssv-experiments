@@ -1,16 +1,19 @@
 package types
 
 type QBFT struct {
+	Identifier []byte `ssz-max:"56"` // concatenation of domain, public key, and role
+
 	Round  uint64
 	Height uint64
 
 	PreparedRound uint64
 
-	ProposalAcceptedForCurrentRound *QBFTSignedMessage
+	// ProposalAcceptedForCurrentRound holds the accepted proposal for the current round
+	ProposalAcceptedForCurrentRound *QBFTMessage // TODO this can simply be the fullData or the root
 
 	// Messages is a unified (to all message type) container slice, simple and easy to serialize.
 	// All messages in the container are verified and authenticated
-	Messages []*QBFTSignedMessage `ssz-max:"256"`
+	Messages []*QBFTMessage `ssz-max:"256"`
 
 	// Stopped when true, can't process any messages
 	Stopped bool

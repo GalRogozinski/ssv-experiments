@@ -5,16 +5,18 @@ import (
 	types "ssv-experiments/new_arch_2/spec/asgard/types"
 )
 
-func ProcessMessage(state *types.QBFT, share *types.Share, signedMessage *types.QBFTSignedMessage) error {
+// ProcessMessage process a pre-validated qbft message that was extracted from SignedMessage
+func ProcessMessage(state *types.QBFT, share *types.Share, qbftMessage *types.QBFTMessage) (*types.
+	QBFTMessage, error) {
 	if !CanProcessMessages(state) {
 		return errors.New("can't process new messages")
 	}
 
-	if err := ValidateMessage(state, share, signedMessage); err != nil {
-		return err
+	if err := ValidateMessage(state, share, qbftMessage); err != nil {
+		return nil, err
 	}
 
-	switch signedMessage.Message.MsgType {
+	switch qbftMessage.MsgType {
 	case types.ProposalMessageType:
 		return UponProposal(state, signedMessage)
 	case types.PrepareMessageType:

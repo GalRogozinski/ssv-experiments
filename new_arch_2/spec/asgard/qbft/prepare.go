@@ -3,6 +3,7 @@ package qbft
 import (
 	"bytes"
 	"github.com/pkg/errors"
+	"ssv-experiments/new_arch/qbft"
 	"ssv-experiments/new_arch_2/spec/asgard/types"
 )
 
@@ -21,12 +22,17 @@ func UponPrepare(state *types.QBFT, share *types.Share, signedMessage *types.QBF
 }
 
 // CreatePrepareMessage returns unsigned prepare message
-func CreatePrepareMessage(state *types.QBFT) (*types.QBFTMessage, error) {
-	// TODO implement
+func CreatePrepareMessage(state *types.QBFT) *types.QBFTMessage {
 	return &types.QBFTMessage{
-		Round:   state.Round,
-		MsgType: types.PrepareMessageType,
-	}, nil
+		MsgType:                  types.PrepareMessageType,
+		Round:                    state.Round,
+		Height:                   state.Height,
+		Identifier:               nil,
+		Root:                     state.ProposalAcceptedForCurrentRound.Root,
+		DataRound:                0,
+		RoundChangeJustification: nil,
+		PrepareJustification:     nil,
+	}
 }
 
 func PrepareQuorum(state *types.QBFT, share *types.Share) bool {
@@ -34,30 +40,8 @@ func PrepareQuorum(state *types.QBFT, share *types.Share) bool {
 	return UniqueSignerQuorum(share.Quorum, all)
 }
 
-func validSignedPrepareForHeightRoundAndRoot(
-	share *types.Share,
-	signedMessage *types.QBFTSignedMessage,
-	height, round uint64,
-	root [32]byte,
-) error {
-	if signedMessage.Message.MsgType != types.PrepareMessageType {
-		return errors.New("prepare msg type is wrong")
-	}
-	if signedMessage.Message.Height != height {
-		return errors.New("wrong msg height")
-	}
-	if signedMessage.Message.Round != round {
-		return errors.New("wrong msg round")
-	}
-
-	if err := signedMessage.Validate(); err != nil {
-		return errors.Wrap(err, "prepareData invalid")
-	}
-
-	if !bytes.Equal(signedMessage.Message.Root[:], root[:]) {
-		return errors.New("proposed data mistmatch")
-	}
-
+// ValidateSignedPrepare returns nil if signed prepare message has a valid signature and correct number of signers
+func ValidateSignedPrepare(signedMessage *qbft.SignedMessage, share types.Share) error {
 	if len(signedMessage.Signers) != 1 {
 		return errors.New("msg allows 1 signer")
 	}
@@ -70,6 +54,29 @@ func validSignedPrepareForHeightRoundAndRoot(
 		share.Cluster,
 	); err != nil {
 		return err
+	}
+	return nil
+}
+
+// isValidPrepare returns nil if prepare message is valid for state's height and round
+func isValidPrepare(qbftMessage *types.QBFTMessage, state *types.QBFT) error {
+	if qbftMessage.MsgType != types.PrepareMessageType {
+		return errors.New("prepare msg type is wrong")
+	}
+
+	if qbftMessage.Height != state.Height {
+		return errors.New("wrong msg height")
+	}
+	if qbftMessage.Round != state.Round {
+		return errors.New("wrong msg round")
+	}
+
+	if err := qbftMessage.Validate(); err != nil {
+		return errors.Wrap(err, "prepareData invalid")
+	}
+
+	if !bytes.Equal(qbftMessage.Root[:], state.ProposalAcceptedForCurrentRound.Root[:]) {
+		return errors.New("proposed data mistmatch")
 	}
 
 	return nil

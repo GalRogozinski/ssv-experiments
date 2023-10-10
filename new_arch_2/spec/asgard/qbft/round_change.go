@@ -65,9 +65,9 @@ func validRoundChangeForData(
 		}
 
 		// validate prepare message justifications
-		prepareMsgs, _ := signedMessage.Message.GetRoundChangeJustifications() // no need to check error, checked on signedMsg.Message.Validate()
+		prepareMsgs, _ := signedMessage.Message.GetSignedRoundChangeJustifications() // no need to check error, checked on signedMsg.Message.Validate()
 		for _, pm := range prepareMsgs {
-			if err := validSignedPrepareForHeightRoundAndRoot(
+			if err := isValidPrepare(
 				share,
 				pm,
 				state.Height,

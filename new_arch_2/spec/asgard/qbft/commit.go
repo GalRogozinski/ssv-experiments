@@ -30,7 +30,7 @@ func CreateCommitMessage(state *types.QBFT) (*types.QBFTMessage, error) {
 		Height:     state.Height,
 		Identifier: state.Identifier, // TODO
 		Root:       state.ProposalAcceptedForCurrentRound.Message.Root,
-		DataRound:  state.Round, // TODO for future version omit this and keep only round?
+		DataRound:  state.Round,
 	}, nil
 }
 

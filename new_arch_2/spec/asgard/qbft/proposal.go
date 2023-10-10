@@ -8,16 +8,16 @@ import (
 
 // UponProposal process proposal message
 // Assumes proposal message is valid!
-func UponProposal(state *types.QBFT, signedMessage *types.QBFTSignedMessage) error {
+func UponProposal(state *types.QBFT, signedMessage *types.QBFTSignedMessage) (*types.QBFTMessage, error) {
 	if !uniqueSignerForRound(state, signedMessage) {
-		return errors.New("duplicate message")
+		return nil, errors.New("duplicate message")
 	}
 	AddMessage(state, signedMessage)
 
 	newRound := signedMessage.Message.Round
 	state.ProposalAcceptedForCurrentRound = signedMessage
 	state.Round = newRound
-	return nil
+	return CreatePrepareMessage(state), nil
 }
 
 func CreateProposalMessage(state *types.QBFT, value *types.ConsensusData) (*types.QBFTMessage, error) {
@@ -28,19 +28,18 @@ func CreateProposalMessage(state *types.QBFT, value *types.ConsensusData) (*type
 	}, nil
 }
 
-// isValidProposal returns nil if message is valid for state
-func isValidProposal(state *types.QBFT, share *types.Share, signedMessage *types.QBFTSignedMessage) error {
-	if signedMessage.Message.MsgType != types.ProposalMessageType {
-		return errors.New("msg type is not proposal")
+// ValidateSignedProposal returns nil if signed proposal message has a valid signature, expected number of signers,
+// and correctly signed justifications
+func ValidateSignedProposal(signedProposal *types.QBFTSignedMessage, share types.Share) error {
+	if len(signedProposal.Signers) != 1 {
+		return errors.New("msg allows 1 signer")
 	}
-
-	if len(signedMessage.Signers) != 1 {
-		return errors.New("proposal allows 1 signer")
+	if signedProposal.Signers[0] != proposerForRound(signedProposal.Message.Round) {
+		return errors.New("proposal leader invalid")
 	}
-
 	if err := types.VerifyObjectSignature(
-		signedMessage.Signature,
-		signedMessage,
+		signedProposal.Signature,
+		signedProposal,
 		share.Domain,
 		types.QBFTSignatureType,
 		share.Cluster,
@@ -48,27 +47,43 @@ func isValidProposal(state *types.QBFT, share *types.Share, signedMessage *types
 		return err
 	}
 
-	// validate unique message from signer
+	// get justifications
+	// no need to check error,
+	// checked on signedProposal.Validate()
+	roundChangeJustification, _ := signedProposal.Message.GetSignedRoundChangeJustifications()
+	prepareJustification, _ := signedProposal.Message.GetSignedPrepareJustifications()
 
-	if signedMessage.Signers[0] != proposerForRound(signedMessage.Message.Round) {
+	return nil
+}
+
+// ValidateProposal returns nil if message is valid for state
+// operator should be the operator that signed the enclosing  QBFTSignedMessage
+func ValidateProposal(state *types.QBFT, operator uint64, fullData []byte, qbftMessage *types.QBFTMessage) error {
+	if qbftMessage.MsgType != types.ProposalMessageType {
+		return errors.New("msg type is not proposal")
+	}
+
+	// validate unique message from signer
+	if operator != proposerForRound(qbftMessage.Round) {
 		return errors.New("proposal leader invalid")
 	}
-	if err := signedMessage.Validate(); err != nil {
+	if err := qbftMessage.Validate(); err != nil {
 		return errors.Wrap(err, "proposal invalid")
 	}
 
 	// verify full data integrity
-	r, err := HashDataRoot(signedMessage.FullData)
+	r, err := HashDataRoot(fullData)
 	if err != nil {
 		return errors.Wrap(err, "could not hash input data")
 	}
-	if !bytes.Equal(signedMessage.Message.Root[:], r[:]) {
+	if !bytes.Equal(qbftMessage.Root[:], r[:]) {
 		return errors.New("H(data) != root")
 	}
 
 	// get justifications
-	roundChangeJustification, _ := signedMessage.Message.GetRoundChangeJustifications() // no need to check error, checked on signedProposal.Validate()
-	prepareJustification, _ := signedMessage.Message.GetPrepareJustifications()         // no need to check error, checked on signedProposal.Validate()
+	roundChangeJustification, _ := qbftMessage.GetSignedRoundChangeJustifications() // no need to check error,
+	// checked on signedProposal.Validate()
+	prepareJustification, _ := qbftMessage.GetSignedPrepareJustifications() // no need to check error, checked on signedProposal.Validate()
 
 	if err := isProposalJustification(
 		state,
@@ -76,14 +91,14 @@ func isValidProposal(state *types.QBFT, share *types.Share, signedMessage *types
 		roundChangeJustification,
 		prepareJustification,
 		state.Height,
-		signedMessage.Message.Round,
-		signedMessage.FullData,
+		qbftMessage.Message.Round,
+		qbftMessage.FullData,
 	); err != nil {
 		return errors.Wrap(err, "proposal not justified")
 	}
 
-	if (state.ProposalAcceptedForCurrentRound == nil && signedMessage.Message.Round == state.Round) ||
-		signedMessage.Message.Round > state.Round {
+	if (state.ProposalAcceptedForCurrentRound == nil && qbftMessage.Message.Round == state.Round) ||
+		qbftMessage.Message.Round > state.Round {
 		return nil
 	}
 	return errors.New("proposal is not valid with current state")
@@ -155,7 +170,7 @@ func isProposalJustification(
 
 			// validate each prepare message against the highest previously prepared fullData and round
 			for _, pm := range prepareMessages {
-				if err := validSignedPrepareForHeightRoundAndRoot(
+				if err := isValidPrepare(
 					share,
 					pm,
 					height,

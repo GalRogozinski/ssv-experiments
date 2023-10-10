@@ -16,22 +16,24 @@ const (
 )
 
 type QBFTMessage struct {
-	MsgType    uint64
-	Round      uint64 // QBFT round for which the msg is for
-	Height     uint64 // QBFT height for which the msg is for
-	Identifier []byte `ssz-max:"56"` // instance Identifier this msg belongs to
+	MsgType uint64
+	Round   uint64 // QBFT round for which the msg is for
+	// TODO this should be runner property
+	Height uint64 // QBFT height for which the msg is for
+	// TODO seperate identifier to domain, public key, and role, height is also part of the identifier
+	Identifier []byte `ssz-max:"56"` // concatenation of domain, public key, and role
 
 	Root                     [32]byte `ssz-size:"32"`
-	DataRound                uint64
+	DataRound                uint64   // TODO for future version omit this and keep only round?
 	RoundChangeJustification [][]byte `ssz-max:"13,65536"` // 2^16
 	PrepareJustification     [][]byte `ssz-max:"13,65536"` // 2^16
 }
 
-func (msg *QBFTMessage) GetRoundChangeJustifications() ([]*QBFTSignedMessage, error) {
+func (msg *QBFTMessage) GetSignedRoundChangeJustifications() ([]*QBFTSignedMessage, error) {
 	return unmarshalJustifications(msg.RoundChangeJustification)
 }
 
-func (msg *QBFTMessage) GetPrepareJustifications() ([]*QBFTSignedMessage, error) {
+func (msg *QBFTMessage) GetSignedPrepareJustifications() ([]*QBFTSignedMessage, error) {
 	return unmarshalJustifications(msg.PrepareJustification)
 }
 
@@ -59,10 +61,10 @@ func unmarshalJustifications(data [][]byte) ([]*QBFTSignedMessage, error) {
 // Validate returns error if msg validation doesn't pass.
 // Msg validation checks the msg, it's variables for validity.
 func (msg *QBFTMessage) Validate() error {
-	if _, err := msg.GetRoundChangeJustifications(); err != nil {
+	if _, err := msg.GetSignedRoundChangeJustifications(); err != nil {
 		return err
 	}
-	if _, err := msg.GetPrepareJustifications(); err != nil {
+	if _, err := msg.GetSignedPrepareJustifications(); err != nil {
 		return err
 	}
 	if msg.MsgType > RoundChangeMessageType {
@@ -76,7 +78,7 @@ type QBFTSignedMessage struct {
 	Message   QBFTMessage
 	Signature [96]byte `ssz-size:"96"`
 	Signers   []uint64 `ssz-max:"13"`
-	FullData  []byte   `ssz-max:"4259840"`
+	FullData  []byte   `ssz-max:"4259840"` // TODO root should be here and full data should be inside QBFT Message?
 }
 
 // Validate returns error if msg validation doesn't pass.
